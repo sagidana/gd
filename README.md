@@ -50,4 +50,26 @@ what i do by hand. which is 'smart' grep the repo:
   logic to the script in an easy way so that all consequence searchs will use the
   provided logic
 
+## Examples
+- `gd --cwd '~/proj' --symbol 'method_name'`
+	- searching the definition of 'method_name' inside of the project at ~/proj
+	- this project is implicitly set to c language (the default)
+- `gd --symbol 'method_name'`
+	- searching the definition of 'method_name'
+	- the project location is implicitly set to cwd (the default)
+	- this project is implicitly set to c language (the default)
+- `gd --language python --symbol 'Dog'`
+	- searching the definition of 'Dog' in python project at cwd.
+- `gd --action build-treesitter`
+	- this command will build 'my_languages.so' library thats we use to use
+	  tree-sitter with. it requires for us to:
+		- `mkdir vendor`
+		- `git clone https://github.com/tree-sitter/tree-sitter-c.git vendor`
+		- `git clone https://github.com/tree-sitter/tree-sitter-cpp.git vendor`
+		- `git clone https://github.com/tree-sitter/tree-sitter-python.git vendor`
+		- `git clone https://github.com/tree-sitter/tree-sitter-javascript.git vendor`
+		- `git clone https://github.com/tree-sitter/tree-sitter-java.git vendor`
+		- `gd --action build-treesitter`
+	- it will create the 'my_languages.so' inside the build folder:
+		- `build/my_languages.so`
 

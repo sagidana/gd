@@ -1,4 +1,5 @@
 from tree_sitter import Language, Parser
+from os import path
 
 
 C_LANGUAGE = None
@@ -40,16 +41,17 @@ def ts_build_library():
 	return True
 
 def ts_init(language=None):
+	local_path = "/home/s/github/gd/"
 	global C_LANGUAGE
 	global CPP_LANGUAGE
 	global PY_LANGUAGE
 	global JS_LANGUAGE
 	global JAVA_LANGUAGE
-	C_LANGUAGE = Language('build/my-languages.so', 'c')
-	CPP_LANGUAGE = Language('build/my-languages.so', 'cpp')
-	PY_LANGUAGE = Language('build/my-languages.so', 'python')
-	JS_LANGUAGE = Language('build/my-languages.so', 'javascript')
-	JAVA_LANGUAGE = Language('build/my-languages.so', 'java')
+	C_LANGUAGE = Language(path.join(local_path, 'build/my-languages.so'), 'c')
+	CPP_LANGUAGE = Language(path.join(local_path, 'build/my-languages.so'), 'cpp')
+	PY_LANGUAGE = Language(path.join(local_path, 'build/my-languages.so'), 'python')
+	JS_LANGUAGE = Language(path.join(local_path, 'build/my-languages.so'), 'javascript')
+	JAVA_LANGUAGE = Language(path.join(local_path, 'build/my-languages.so'), 'java')
 	if language: return ts_set_parser(language)
 	return True
 
@@ -100,9 +102,21 @@ def ts_parse_file(language, file_path):
 
 def ts_is_fit_query(query, tree, x, y):
 	captures = query.captures(  tree.root_node,
-								start_point=[y, x],
-								end_point=[y, x])
-	return captures and len(captures) > 0
+								# start_point=[y, x],
+								# end_point=[y, x])
+								start_point=[y-1 if y > 0 else y, 0],
+								end_point=[y+1, 0])
+	for node, name in captures:
+		start_y = node.start_point[0]
+		start_x = node.start_point[1]
+		end_y = node.end_point[0]
+		end_x = node.end_point[1]
+		if start_y > y: continue
+		if end_y < y: continue
+		if start_x > x: continue
+		if end_x < x: continue
+		return True
+	return False
 
 def ts_is_definition(tree, x, y):
 	global parser_language
@@ -113,6 +127,8 @@ def ts_is_definition(tree, x, y):
 			(preproc_def (identifier) @name)
 			(type_definition (type_identifier) @name)
 			(init_declarator (identifier) @name)
+			(init_declarator (array_declarator (identifier) @name))
+			(declaration (identifier) @name)
 			""")
 		return ts_is_fit_query(query, tree, x, y)
 	if parser_language == 'cpp':

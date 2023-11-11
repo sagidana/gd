@@ -22,8 +22,8 @@ def rg(pattern, cwd=None, timeout=None):
 	for r in raw_result.stdout.splitlines():
 		r = r.split(':')
 		file_name = r[0]
-		y = int(r[1])
-		x = int(r[2])
+		y = int(r[1]) - 1 # needs to be 0-based
+		x = int(r[2]) 	# rg, why x isn't 1-based like y? WTF
 		text = r[3]
 
 		if file_name not in results: results[file_name] = []
@@ -41,7 +41,8 @@ def is_type(args, cb):
 	ts_init(args.language)
 
 	# ripgrep after the symbol
-	results = rg(args.symbol, cwd=args.cwd, timeout=args.timeout)
+	results = rg(f"\W{args.symbol}([\W$])", cwd=args.cwd, timeout=args.timeout)
+	# results = rg(f"{args.symbol}", cwd=args.cwd, timeout=args.timeout)
 	if results == None: return None
 	for file in results:
 		file_path = os.path.join(args.cwd, file)
@@ -53,7 +54,7 @@ def is_type(args, cb):
 		for result in results[file]:
 			# if ts_is_xref(tree, result['line_num']):
 			if cb(tree, result['x'], result['y']):
-				ret.append(f"{file_path}:{result['y']}:{result['x']}:{result['text']}")
+				ret.append(f"{file_path}:{result['y']+1}:{result['x']}:{result['text']}")
 	return ret
 
 ACTION_XREFS = 'xrefs'

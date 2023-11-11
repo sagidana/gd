@@ -6,17 +6,21 @@ This program attempts to solve a very specific problem.
 The `go to definition` problem as well as the `list cross-references` problem
 
 The input is:
+
 	- the symbol we searching
 	- the absolute file path we are in
 	- the line and col numbers we ar at
 	- the action
 		- `goto definition`
 		- `list cross references`
+
 The output is:
+
 	- one or more locations in the folowing format:
 		- `<file_abs_path>:<line_number>:<col_number>`
 
 The challenge that it faces is as follows:
+
 	- it needs to be FAST
 	- does NOT require LSP or other heavy cofigured solutions
 	- auto detect the language of which the symbol is at

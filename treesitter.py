@@ -98,7 +98,13 @@ def ts_parse_file(language, file_path):
 		return None
 	return tree
 
-def ts_is_definition(tree, line_num):
+def ts_is_fit_query(query, tree, x, y):
+	captures = query.captures(  tree.root_node,
+								start_point=[y, x],
+								end_point=[y, x])
+	return captures and len(captures) > 0
+
+def ts_is_definition(tree, x, y):
 	global parser_language
 	if parser_language == 'c':
 		query = C_LANGUAGE.query("""
@@ -108,13 +114,7 @@ def ts_is_definition(tree, line_num):
 			(type_definition (type_identifier) @name)
 			(init_declarator (identifier) @name)
 			""")
-		captures = query.captures(  tree.root_node,
-									start_point=[line_num -1, 0],
-									end_point=[line_num+1 -1, 0])
-		for capture, name in captures:
-			if capture.start_point[0]+1 <= line_num <= capture.end_point[0]+1:
-				return True
-		return False
+		return ts_is_fit_query(query, tree, x, y)
 	if parser_language == 'cpp':
 		return False
 	if parser_language == 'python':
@@ -122,21 +122,36 @@ def ts_is_definition(tree, line_num):
 			(function_definition (identifier) @name)
 			(class_definition (identifier) @name)
 			""")
-		captures = query.captures(  tree.root_node,
-									start_point=[line_num -1, 0],
-									end_point=[line_num+1 -1, 0])
-		for capture, name in captures:
-			if capture.start_point[0]+1 <= line_num <= capture.end_point[0]+1:
-				return True
-		return False
-		return False
+		return ts_is_fit_query(query, tree, x, y)
 	if parser_language == 'javascript':
 		return False
 	if parser_language == 'java':
 		return False
 	return False
 
-def ts_is_xref(tree, line_num):
-	pass
+def ts_is_xref(tree, x, y):
+	global parser_language
+	if parser_language == 'c':
+		query = C_LANGUAGE.query("""
+			(function_declarator (identifier) @name)
+			(preproc_function_def (identifier) @name)
+			(preproc_def (identifier) @name)
+			(type_definition (type_identifier) @name)
+			(init_declarator (identifier) @name)
+			""")
+		return ts_is_fit_query(query, tree, x, y)
+	if parser_language == 'cpp':
+		return False
+	if parser_language == 'python':
+		query = PY_LANGUAGE.query("""
+			(function_definition (identifier) @name)
+			(class_definition (identifier) @name)
+			""")
+		return ts_is_fit_query(query, tree, x, y)
+	if parser_language == 'javascript':
+		return False
+	if parser_language == 'java':
+		return False
+	return False
 
 

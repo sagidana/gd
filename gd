@@ -9,7 +9,7 @@ from treesitter import *
 def rg(pattern, cwd=None, timeout=None):
 	raw_result = None
 	try:
-		raw_result = subprocess.run(['rg','-n', pattern],
+		raw_result = subprocess.run(['rg','--vimgrep', pattern],
 									cwd=cwd,
 									timeout=timeout,
 									capture_output=True,  # make stdout contain the data
@@ -22,31 +22,27 @@ def rg(pattern, cwd=None, timeout=None):
 	for r in raw_result.stdout.splitlines():
 		r = r.split(':')
 		file_name = r[0]
-		line_num = int(r[1])
-		text = r[2]
+		y = int(r[1])
+		x = int(r[2])
+		text = r[3]
 
 		if file_name not in results: results[file_name] = []
 		results[file_name].append({
-			'line_num': line_num,
+			'y': y,
+			'x': x,
 			'text': text,
 		})
 	return results
 
-ACTION_XREFS = 'xrefs'
-def action_xrefs(args): return 1
-
-ACTION_GOTO_DEFINITION = 'goto-definition'
-def action_goto_definition(args):
+def is_type(args, cb):
 	ret = []
-	if args.symbol == None:
-		print(f"the {ACTION_GOTO_DEFINITION} action require the symbol argument")
-		return 1
+	if args.symbol == None: return None
 
 	ts_init(args.language)
 
 	# ripgrep after the symbol
 	results = rg(args.symbol, cwd=args.cwd, timeout=args.timeout)
-	if results == None: return 1
+	if results == None: return None
 	for file in results:
 		file_path = os.path.join(args.cwd, file)
 		# use treesitter to parse each file
@@ -55,12 +51,31 @@ def action_goto_definition(args):
 			print(f"[!] failed to parse file: {file}")
 			continue
 		for result in results[file]:
-			# goto each of ripgrep's results and check if the location is a
-			# 'definition' type node in tree sitter. if it is return the location.
-			if ts_is_definition(tree, result['line_num']):
-				ret.append(f"{file_path}:{result['line_num']}:{result['text']}")
+			# if ts_is_xref(tree, result['line_num']):
+			if cb(tree, result['x'], result['y']):
+				ret.append(f"{file_path}:{result['y']}:{result['x']}:{result['text']}")
+	return ret
 
-	for r in ret: print(r) # is it ok?
+ACTION_XREFS = 'xrefs'
+def action_xrefs(args):
+	ret = []
+	if args.symbol == None:
+		print(f"the {ACTION_XREFS} action require the symbol argument")
+		return 1
+	results = is_type(args, ts_is_xref)
+	if results == None or len(results) == 0: return 1
+	for r in results: print(r) # is it ok?
+	return 0
+
+ACTION_GOTO_DEFINITION = 'goto-definition'
+def action_goto_definition(args):
+	ret = []
+	if args.symbol == None:
+		print(f"the {ACTION_GOTO_DEFINITION} action require the symbol argument")
+		return 1
+	results = is_type(args, ts_is_definition)
+	if results == None or len(results) == 0: return 1
+	for r in results: print(r) # is it ok?
 	return 0
 
 ACTION_BUILD_TREESITTER = 'build-treesitter'

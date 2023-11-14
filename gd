@@ -9,7 +9,12 @@ from treesitter import *
 def rg(pattern, cwd=None, timeout=None):
 	raw_result = None
 	try:
-		raw_result = subprocess.run(['rg','--vimgrep', pattern],
+		raw_result = subprocess.run(['rg',
+									 '--vimgrep',
+									 '-g', '!tags',
+									 '--max-columns', '200',
+									 '--vimgrep',
+									 pattern],
 									cwd=cwd,
 									timeout=timeout,
 									capture_output=True,  # make stdout contain the data

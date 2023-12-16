@@ -12,6 +12,7 @@ def rg(pattern, cwd=None, timeout=None):
 		raw_result = subprocess.run(['rg',
 									 '--vimgrep',
 									 '-g', '!tags',
+									 '-g', '!*.gcov',
 									 '--max-columns', '200',
 									 '--vimgrep',
 									 pattern],

@@ -122,7 +122,7 @@ def ts_is_definition(tree, x, y):
 	global parser_language
 	if parser_language == 'c':
 		query = C_LANGUAGE.query("""
-			(function_declarator (identifier) @name)
+			(function_definition (function_declarator (identifier) @name))
 			(preproc_function_def (identifier) @name)
 			(preproc_def (identifier) @name)
 			(type_definition (type_identifier) @name)

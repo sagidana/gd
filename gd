@@ -58,10 +58,15 @@ def is_type(args, cb):
 			print(f"[!] failed to parse file: {file}")
 			continue
 		for result in results[file]:
+			# print(f"{file} {result}")
 			# if ts_is_xref(tree, result['line_num']):
 			if cb(tree, result['x'], result['y']):
 				ret.append(f"{file_path}:{result['y']+1}:{result['x']}:{result['text']}")
 	return ret
+
+def ctags(args):
+	# args.symbol
+	pass
 
 ACTION_XREFS = 'xrefs'
 def action_xrefs(args):
@@ -80,7 +85,9 @@ def action_goto_definition(args):
 	if args.symbol == None:
 		print(f"the {ACTION_GOTO_DEFINITION} action require the symbol argument")
 		return 1
-	results = is_type(args, ts_is_definition)
+	results = ctags(args)
+	if not results:
+		results = is_type(args, ts_is_definition)
 	if results == None or len(results) == 0: return 1
 	for r in results: print(r) # is it ok?
 	return 0

@@ -1,4 +1,10 @@
 from tree_sitter import Language, Parser
+import tree_sitter_python
+import tree_sitter_c
+import tree_sitter_cpp
+import tree_sitter_java
+import tree_sitter_javascript
+
 from os import path
 
 
@@ -11,35 +17,6 @@ JAVA_LANGUAGE = None
 parser = None
 parser_language = None
 
-def ts_build_library():
-	"""
-	in order to build the treesitter .so we need to create a directory named
-	'vendor' and git clone into that directory the following repos:
-	- git clone https://github.com/tree-sitter/tree-sitter-c.git
-	- git clone https://github.com/tree-sitter/tree-sitter-cpp.git
-	- git clone https://github.com/tree-sitter/tree-sitter-python.git
-	- git clone https://github.com/tree-sitter/tree-sitter-javascript.git
-	- git clone https://github.com/tree-sitter/tree-sitter-java.git
-	"""
-	try:
-		Language.build_library(
-		  # Store the library in the `build` directory
-		  'build/my-languages.so',
-
-		  # Include one or more languages
-		  [
-		    'vendor/tree-sitter-c',
-		    'vendor/tree-sitter-cpp',
-		    'vendor/tree-sitter-python',
-		    'vendor/tree-sitter-javascript',
-		    'vendor/tree-sitter-java',
-		  ]
-		)
-	except Exception as e:
-		print(f"[!] Exception: {e}")
-		return False
-	return True
-
 def ts_init(language=None):
 	local_path = "/home/s/github/gd/"
 	global C_LANGUAGE
@@ -47,11 +24,11 @@ def ts_init(language=None):
 	global PY_LANGUAGE
 	global JS_LANGUAGE
 	global JAVA_LANGUAGE
-	C_LANGUAGE = Language(path.join(local_path, 'build/my-languages.so'), 'c')
-	CPP_LANGUAGE = Language(path.join(local_path, 'build/my-languages.so'), 'cpp')
-	PY_LANGUAGE = Language(path.join(local_path, 'build/my-languages.so'), 'python')
-	JS_LANGUAGE = Language(path.join(local_path, 'build/my-languages.so'), 'javascript')
-	JAVA_LANGUAGE = Language(path.join(local_path, 'build/my-languages.so'), 'java')
+	C_LANGUAGE = Language(tree_sitter_c.language())
+	CPP_LANGUAGE = Language(tree_sitter_cpp.language())
+	PY_LANGUAGE = Language(tree_sitter_python.language())
+	JS_LANGUAGE = Language(tree_sitter_javascript.language())
+	JAVA_LANGUAGE = Language(tree_sitter_java.language())
 	if language: return ts_set_parser(language)
 	return True
 

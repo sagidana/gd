@@ -14,6 +14,7 @@ JAVA_LANGUAGE = None
 
 parser = None
 parser_language = None
+parser_LANGUAGE = None
 
 def ts_init(language=None):
     global C_LANGUAGE
@@ -32,6 +33,7 @@ def ts_init(language=None):
 def ts_set_parser(language):
     global parser
     global parser_language
+    global parser_LANGUAGE
     try:
         parser = Parser()
         if language == 'c':
@@ -40,18 +42,22 @@ def ts_set_parser(language):
             return True
         if language == 'cpp':
             parser_language = language
+            parser_LANGUAGE = CPP_LANGUAGE
             parser.set_language(CPP_LANGUAGE)
             return True
         if language == 'python':
             parser_language = language
+            parser_LANGUAGE = PY_LANGUAGE
             parser.set_language(PY_LANGUAGE)
             return True
         if language == 'javascript':
             parser_language = language
+            parser_LANGUAGE = JS_LANGUAGE
             parser.set_language(JS_LANGUAGE)
             return True
         if language == 'java':
             parser_language = language
+            parser_LANGUAGE = JAVA_LANGUAGE
             parser.set_language(JAVA_LANGUAGE)
             return True
     except Exception as e:
@@ -151,8 +157,10 @@ def ts_is_xref(tree, x, y):
     return False
 
 
-def ts_enumerate_query_results(query, tree):
-    captures = query.captures(tree.root_node)
+def ts_query_tree(query, tree):
+    global parser_LANGUAGE
+    query = parser_LANGUAGE.query(query)
+    captures = query.captures(tree)
     for node, name in captures:
         yield node, name
 

@@ -1,166 +1,166 @@
-from tree_sitter import Language, Parser
-from os import path
-import tree_sitter_python
-import tree_sitter_java
-import tree_sitter_c
-import tree_sitter_javascript
-import tree_sitter_cpp
+from tree_sitter_language_pack import(get_binding,
+                                      get_language,
+                                      get_parser)
+import tree_sitter
+import subprocess
+import json
 
-C_LANGUAGE = None
-CPP_LANGUAGE = None
-PY_LANGUAGE = None
-JS_LANGUAGE = None
-JAVA_LANGUAGE = None
+from .queries import queries
 
-parser = None
-parser_language = None
-parser_LANGUAGE = None
-
-def ts_init(language=None):
-    global C_LANGUAGE
-    global CPP_LANGUAGE
-    global PY_LANGUAGE
-    global JS_LANGUAGE
-    global JAVA_LANGUAGE
-    C_LANGUAGE =    Language(tree_sitter_c.language())
-    CPP_LANGUAGE =  Language(tree_sitter_cpp.language())
-    PY_LANGUAGE =   Language(tree_sitter_python.language())
-    JS_LANGUAGE =   Language(tree_sitter_javascript.language())
-    JAVA_LANGUAGE = Language(tree_sitter_java.language())
-    if language: return ts_set_parser(language)
-    return True
-
-def ts_set_parser(language):
-    global parser
-    global parser_language
-    global parser_LANGUAGE
+def rg(pattern, cwd=None, timeout=None):
+    raw_result = None
     try:
-        parser = Parser()
-        if language == 'c':
-            parser_language = language
-            parser.set_language(C_LANGUAGE)
-            return True
-        if language == 'cpp':
-            parser_language = language
-            parser_LANGUAGE = CPP_LANGUAGE
-            parser.set_language(CPP_LANGUAGE)
-            return True
-        if language == 'python':
-            parser_language = language
-            parser_LANGUAGE = PY_LANGUAGE
-            parser.set_language(PY_LANGUAGE)
-            return True
-        if language == 'javascript':
-            parser_language = language
-            parser_LANGUAGE = JS_LANGUAGE
-            parser.set_language(JS_LANGUAGE)
-            return True
-        if language == 'java':
-            parser_language = language
-            parser_LANGUAGE = JAVA_LANGUAGE
-            parser.set_language(JAVA_LANGUAGE)
-            return True
-    except Exception as e:
-        print(f"[!] Exception {e}")
-        return False
-    return False
-
-def ts_parse_file(language, file_path):
-    global parser
-    global parser_language
-
-    if parser_language != language:
-        if not ts_set_parser(language): return None
-    # the parser is ready for the file now..
-    try:
-        with open(file_path, 'rb') as f:
-            tree = parser.parse(f.read())
+        raw_result = subprocess.run(['rg',
+                                     '--vimgrep',
+                                     '-g', '!tags',
+                                     '-g', '!*.gcov',
+                                     '--max-columns', '200',
+                                     '--vimgrep',
+                                     pattern],
+                                    cwd=cwd,
+                                    timeout=timeout,
+                                    capture_output=True,  # make stdout contain the data
+                                    text=True)			# make stdout point to string
+        # check=True)		   # check return code
     except Exception as e:
         print(f"[!] Exception: {e}")
         return None
-    return tree
+    results = {}
+    for r in raw_result.stdout.splitlines():
+        r = r.split(':')
+        file_name = r[0]
+        y = int(r[1]) - 1 # needs to be 0-based
+        x = int(r[2]) 	# rg, why x isn't 1-based like y? WTF
+        text = r[3]
 
-def ts_is_fit_query(query, tree, x, y):
-    captures = query.captures(  tree.root_node,
-                              # start_point=[y, x],
-                              # end_point=[y, x])
-                              start_point=[y-1 if y > 0 else y, 0],
-                              end_point=[y+1, 0])
-    for node, name in captures:
-        start_y = node.start_point[0]
-        start_x = node.start_point[1]
-        end_y = node.end_point[0]
-        end_x = node.end_point[1]
-        if start_y > y: continue
-        if end_y < y: continue
-        if start_x > x: continue
-        if end_x < x: continue
-        return True
-    return False
-
-def ts_is_definition(tree, x, y):
-    global parser_language
-    if parser_language == 'c':
-        query = C_LANGUAGE.query("""
-            (function_definition (function_declarator (identifier) @name))
-            (preproc_function_def (identifier) @name)
-            (preproc_def (identifier) @name)
-            (type_definition (type_identifier) @name)
-            (init_declarator (identifier) @name)
-            (init_declarator (array_declarator (identifier) @name))
-            (declaration (identifier) @name)
-            """)
-        return ts_is_fit_query(query, tree, x, y)
-    if parser_language == 'cpp':
-        return False
-    if parser_language == 'python':
-        query = PY_LANGUAGE.query("""
-            (function_definition (identifier) @name)
-            (class_definition (identifier) @name)
-            """)
-        return ts_is_fit_query(query, tree, x, y)
-    if parser_language == 'javascript':
-        return False
-    if parser_language == 'java':
-        query = JAVA_LANGUAGE.query("""
-            (enum_declaration (identifier) @name)
-            (method_declaration (identifier) @name)
-            (class_declaration (identifier) @name)
-            (field_declaration (variable_declarator (identifier) @name))
-            """)
-        return ts_is_fit_query(query, tree, x, y)
-    return False
-
-def ts_is_xref(tree, x, y):
-    global parser_language
-    if parser_language == 'c':
-        query = C_LANGUAGE.query("""
-            (function_declarator (identifier) @name)
-            (preproc_function_def (identifier) @name)
-            (preproc_def (identifier) @name)
-            (type_definition (type_identifier) @name)
-            (init_declarator (identifier) @name)
-            """)
-        return ts_is_fit_query(query, tree, x, y)
-    if parser_language == 'cpp':
-        return False
-    if parser_language == 'python':
-        query = PY_LANGUAGE.query("""
-            (function_definition (identifier) @name)
-            (class_definition (identifier) @name)
-            """)
-        return ts_is_fit_query(query, tree, x, y)
-    if parser_language == 'javascript':
-        return False
-    if parser_language == 'java':
-        return False
-    return False
+        if file_name not in results: results[file_name] = []
+        results[file_name].append({
+            'y': y,
+            'x': x,
+            'text': text,
+            })
+    return results
 
 
-def ts_query_tree(query, tree):
-    global parser_LANGUAGE
-    query = parser_LANGUAGE.query(query)
-    captures = query.captures(tree)
-    for node, name in captures:
-        yield node, name
+class TS:
+    def __init__(self, language):
+        if language not in (
+            'python',
+            ):
+            raise Exception("language is not supported by TS")
+        self._language = language
+        self.language = get_language(language)
+        self.parser = get_parser(language)
 
+    def _create_query(self, query):
+        assert isinstance(query, str)
+        return self.language.query(query)
+
+    def get_tree(self, path):
+        file_bytes = open(path, 'rb').read()
+        tree = self.parser.parse(file_bytes)
+        return tree.root_node
+
+    def enumerate_query(self, tree, query, range=None):
+        assert isinstance(query, str)
+        assert isinstance(tree, tree_sitter.Node)
+        assert isinstance(range, (type(None), tuple))
+
+        _query = self._create_query(query)
+        if range is not None: _query.set_point_range(range)
+        captures = _query.captures(tree)
+
+        for scope in captures:
+            for node in captures[scope]:
+                yield node, scope
+
+    def get_only_node(self, tree, query, range=None):
+        assert isinstance(query, str)
+        assert isinstance(tree, tree_sitter.Node)
+        assert isinstance(range, (type(None), tuple))
+
+        _query = self._create_query(query)
+        if range is not None: _query.set_point_range(range)
+        captures = _query.captures(tree)
+        assert len(captures.keys()) == 1
+        for scope in captures:
+            nodes = captures[scope]
+            assert len(nodes) == 1
+            return captures[scope][0]
+
+    def get_relevant_node(self, tree, query, range=None):
+        assert isinstance(query, str)
+        assert isinstance(tree, tree_sitter.Node)
+        assert isinstance(range, (type(None), tuple))
+        _query = self._create_query(query)
+        if range is not None: _query.set_point_range(range)
+        captures = _query.captures(tree)
+        for scope in captures:
+            for node in captures[scope]:
+                return node
+        return None
+
+    def is_definition(self, tree, range=None):
+        assert isinstance(tree, tree_sitter.Node)
+        assert isinstance(range, (type(None), tuple))
+        query = queries[self._language].get('is_definition', None)
+        assert query is not None
+        node = self.get_relevant_node(tree, query, range)
+        return node is not None
+
+
+def test():
+    ts = TS('python')
+
+    # test 3
+    results = rg("test")
+    for path in results:
+        tree = ts.get_tree(path)
+        for find in results[path]:
+            y = find['y']
+            is_definition =  ts.is_definition(
+                    tree,
+                    ((y-1 if y>0 else y, 0), (y+1, 0))
+                )
+            print(f"{is_definition} -> {find}")
+
+    # # test 2
+    # results = rg("test")
+    # for path in results:
+        # tree = ts.get_tree(path)
+        # for find in results[path]:
+            # y = find['y']
+            # node =  ts.get_relevant_node(
+                    # tree,
+                    # """
+                    # (function_definition (identifier) @id)
+                    # """,
+                    # ((y-1 if y>0 else y, 0), (y+1, 0))
+                # )
+            # print(f"{node} -> {find}")
+
+    # # test 3
+    # tree = ts.get_tree('gd/treesitter.py')
+    # node = ts.get_only_node(tree,
+        # """
+        # (
+         # (function_definition) @function
+         # (#match? @function "test")
+        # )
+        # """
+    # )
+    # print(node)
+
+    # results = ts.enumerate_query(tree,
+        # """
+        # (
+         # (function_definition) @function
+         # (#match? @function "test")
+        # )
+        # """
+    # )
+    # for node, scope in results:
+        # print(scope)
+
+if __name__=="__main__":
+    test()
